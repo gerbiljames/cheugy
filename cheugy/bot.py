@@ -15,13 +15,31 @@ async def on_ready():
 
 
 @bot.command()
-async def play(ctx, arg):
-    await youtube.play(arg, ctx)
+async def play(ctx, arg=None):
+    if arg is not None:
+        await youtube.play(arg, ctx)
+    else:
+        await resume(ctx)
 
 
 @bot.command()
-async def p(ctx, arg):
-    await youtube.play(arg, ctx)
+async def p(ctx, arg=None):
+    await play(ctx, arg)
+
+
+@bot.command()
+async def pause(ctx):
+    await youtube.pause(ctx)
+
+
+@bot.command()
+async def resume(ctx):
+    await youtube.resume(ctx)
+
+
+@bot.command()
+async def r(ctx):
+    await resume(ctx)
 
 
 @bot.command()
@@ -31,6 +49,6 @@ async def stop(ctx):
 
 @bot.command()
 async def s(ctx):
-    await youtube.stop(ctx)
+    await stop(ctx)
 
 bot.run(TOKEN)

@@ -43,6 +43,14 @@ async def stop(ctx):
     find_or_create_session(ctx).stop_stream()
 
 
+async def pause(ctx):
+    find_or_create_session(ctx).pause_stream()
+
+
+async def resume(ctx):
+    find_or_create_session(ctx).resume_stream()
+
+
 class Session:
 
     def __init__(self, guild):
@@ -73,6 +81,14 @@ class Session:
             raise ValueError("That's not a valid YouTube URL.")
 
         self.voice_client.play(source)
+
+    def pause_stream(self):
+        if self.voice_client is not None:
+            self.voice_client.pause()
+
+    def resume_stream(self):
+        if self.voice_client is not None:
+            self.voice_client.resume()
 
     def stop_stream(self):
         if self.voice_client is not None:
