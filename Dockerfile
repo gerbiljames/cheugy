@@ -11,8 +11,8 @@ WORKDIR $APP_HOME
 COPY . ./
 
 # Install production dependencies.
+RUN apk add --update --no-cache ffmpeg gcc
 RUN pip install --no-cache-dir -r requirements.txt
-RUN apk add  --no-cache ffmpeg
 
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.
