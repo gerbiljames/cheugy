@@ -43,11 +43,22 @@ async def stop(ctx):
     find_or_create_session(ctx).stop_stream()
 
 
-async def pause(ctx):
-    find_or_create_session(ctx).pause_stream()
+async def pause_or_resume(ctx):
+    session = find_or_create_session(ctx)
+
+    if session.is_playing():
+        session.pause_stream()
+    else:
+        session.resume_stream()
 
 
 async def resume(ctx):
+    session = find_or_create_session(ctx)
+
+    if not session.is_paused():
+        await ctx.send("You numpty! There's either already something playing or nothing to resume.")
+        return
+
     find_or_create_session(ctx).resume_stream()
 
 
@@ -93,6 +104,18 @@ class Session:
     def stop_stream(self):
         if self.voice_client is not None:
             self.voice_client.stop()
+
+    def is_playing(self):
+        if self.voice_client is not None:
+            return self.voice_client.is_playing()
+        else:
+            return False
+
+    def is_paused(self):
+        if self.voice_client is not None:
+            return self.voice_client.is_paused()
+        else:
+            return False
 
     def get_audio_source(self, url):
         video_ids = re.findall(r"watch\?v=(\S{11})", url)

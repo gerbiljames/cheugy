@@ -6,7 +6,7 @@ from cheugy import youtube
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 
-bot = commands.Bot(command_prefix='~')
+bot = commands.Bot(command_prefix='~', case_insensitive=True)
 
 
 @bot.event
@@ -29,7 +29,7 @@ async def p(ctx, arg=None):
 
 @bot.command()
 async def pause(ctx):
-    await youtube.pause(ctx)
+    await youtube.pause_or_resume(ctx)
 
 
 @bot.command()
