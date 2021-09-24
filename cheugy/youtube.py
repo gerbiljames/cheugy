@@ -78,6 +78,7 @@ class Session:
             await ctx.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
         else:
             await self.voice_client.move_to(channel)
+            await ctx.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
 
     async def play_stream(self, url):
 
