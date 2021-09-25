@@ -73,12 +73,17 @@ class Session:
         if channel is None:
             raise ValueError("Nice try, but you're not in a voice channel.")
 
-        if self.voice_client is None:
-            self.voice_client = await channel.connect()
-            await ctx.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
-        else:
-            await self.voice_client.move_to(channel)
-            await ctx.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
+        if self.voice_client is not None and channel.id == self.voice_client.channel.id:
+            print("Already connected to channel {0} on {1}".format(channel, ctx.guild))
+            return
+
+        if self.voice_client is not None:
+            await self.voice_client.disconnect()
+
+        self.voice_client = await channel.connect()
+        await ctx.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
+
+        print("Connected to channel {0} on {1}".format(channel, ctx.guild))
 
     async def play_stream(self, url):
 
@@ -93,6 +98,8 @@ class Session:
             raise ValueError("That's not a valid YouTube URL.")
 
         self.voice_client.play(source)
+
+        print("Playing {0}".format(url))
 
     def pause_stream(self):
         if self.voice_client is not None:
