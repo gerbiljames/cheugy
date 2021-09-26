@@ -14,6 +14,14 @@ async def on_ready():
     print("Connected successfully as {0}".format(bot.user))
 
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if member.id == bot.user.id:
+        return
+
+    await youtube.leave_channel_if_required(member, before, after)
+
+
 @bot.command()
 async def play(ctx, arg=None):
     if arg is not None:

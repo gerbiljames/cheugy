@@ -62,6 +62,10 @@ async def resume(ctx):
     find_or_create_session(ctx).resume_stream()
 
 
+async def leave_channel_if_required(ctx, before, after):
+    await find_or_create_session(ctx).leave_channel_if_required(before, after)
+
+
 class Session:
 
     def __init__(self, guild):
@@ -100,6 +104,24 @@ class Session:
         self.voice_client.play(source)
 
         print("Playing {0}".format(url))
+
+    async def leave_channel_if_required(self, before, after):
+        if self.voice_client is None:
+            return
+
+        if not (before.channel is not None and after.channel is None):
+            return
+
+        if not before.channel.id == self.voice_client.channel.id:
+            return
+
+        if not len(before.channel.members) != 2:
+            return
+
+        await self.voice_client.disconnect()
+        self.voice_client = None
+
+        print("Left channel {0} on {1}".format(before.channel, before.channel.guild))
 
     def pause_stream(self):
         if self.voice_client is not None:
