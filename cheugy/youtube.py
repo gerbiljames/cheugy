@@ -115,7 +115,7 @@ class Session:
         if not before.channel.id == self.voice_client.channel.id:
             return
 
-        if not len(before.channel.members) != 2:
+        if len(before.channel.members) != 2:
             return
 
         await self.voice_client.disconnect()
