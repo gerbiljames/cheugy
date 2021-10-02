@@ -109,13 +109,15 @@ class Session:
         if self.voice_client is None:
             return
 
-        if not (before.channel is not None and after.channel is None):
+        if before.channel is None:
             return
 
-        if not before.channel.id == self.voice_client.channel.id:
+        if before.channel.id != self.voice_client.channel.id:
             return
 
-        if len(before.channel.members) != 2:
+        members = list(filter(lambda member: not member.bot, before.channel.members))
+
+        if len(members) != 0:
             return
 
         await self.voice_client.disconnect()
