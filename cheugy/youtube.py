@@ -1,7 +1,6 @@
-import re
-
-import pafy
 from discord import FFmpegPCMAudio
+from pytube import YouTube
+from pytube.exceptions import RegexMatchError
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 sessions = {}
@@ -150,10 +149,8 @@ class Session:
             return False
 
     def get_audio_source(self, url):
-        video_ids = re.findall(r"watch\?v=(\S{11})", url)
-
-        if len(video_ids) == 0:
+        try:
+            audio = YouTube(url).streams.get_audio_only()
+            return FFmpegPCMAudio(audio.url, **FFMPEG_OPTIONS)
+        except RegexMatchError:
             return None
-
-        audio = pafy.new(video_ids[0]).getbestaudio()
-        return FFmpegPCMAudio(audio.url, **FFMPEG_OPTIONS)
