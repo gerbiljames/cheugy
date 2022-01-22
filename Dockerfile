@@ -11,7 +11,7 @@ WORKDIR $APP_HOME
 COPY . ./
 
 # Install production dependencies.
-RUN apk add --update --no-cache ffmpeg gcc openssl-dev libffi-dev musl-dev make libsodium-dev opus-dev
+RUN apk add --update --no-cache ffmpeg gcc openssl-dev libffi-dev musl-dev make libsodium-dev opus-dev git
 RUN pip install --no-cache-dir -r requirements.txt
 
 CMD exec python main.py
