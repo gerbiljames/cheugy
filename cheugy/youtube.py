@@ -1,6 +1,6 @@
 from discord import FFmpegPCMAudio
 from pytube import YouTube
-from pytube.exceptions import RegexMatchError
+from pytube.exceptions import RegexMatchError, VideoPrivate, MembersOnly, VideoUnavailable
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 sessions = {}
@@ -95,10 +95,16 @@ class Session:
 
         self.stop_stream()
 
-        source = self.get_audio_source(url)
-
-        if source is None:
-            raise ValueError("That's not a valid YouTube URL.")
+        try:
+            source = self.get_audio_source(url)
+        except RegexMatchError:
+            raise ValueError(" ❓ That's not a valid YouTube URL. ❓ ")
+        except VideoPrivate:
+            raise ValueError(" ⛔ That video is private. ⛔ ")
+        except MembersOnly:
+            raise ValueError(" 🚫 That video is members only. 🚫 ")
+        except VideoUnavailable:
+            raise ValueError(" ❓ That video does not exist. ❓ ")
 
         self.voice_client.play(source)
 
@@ -149,8 +155,5 @@ class Session:
             return False
 
     def get_audio_source(self, url):
-        try:
-            audio = YouTube(url).streams.get_audio_only()
-            return FFmpegPCMAudio(audio.url, **FFMPEG_OPTIONS)
-        except RegexMatchError:
-            return None
+        audio = YouTube(url).streams.get_audio_only()
+        return FFmpegPCMAudio(audio.url, **FFMPEG_OPTIONS)
