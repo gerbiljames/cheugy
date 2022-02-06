@@ -1,6 +1,9 @@
+import asyncio
+
 from discord import FFmpegPCMAudio
 from pytube import YouTube
 from pytube.exceptions import RegexMatchError, VideoPrivate, MembersOnly, VideoUnavailable
+from .stream_queue import StreamQueue
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 sessions = {}
@@ -13,37 +16,40 @@ def find_channel(ctx):
     return None
 
 
-def find_or_create_session(ctx):
+def find_or_create_session(ctx, loop):
     session = sessions.get(ctx.guild.id)
 
     if session is None:
-        session = Session(guild=ctx.guild)
+        session = Session(guild=ctx.guild, loop=loop)
         sessions[ctx.guild.id] = session
 
     return session
 
 
-async def play(url, ctx):
+async def play(url, ctx, loop):
+    channel = find_channel(ctx)
 
-    try:
-        channel = find_channel(ctx)
+    session = find_or_create_session(ctx, loop)
 
-        session = find_or_create_session(ctx)
+    await session.join_channel(ctx, channel)
 
-        await session.join_channel(ctx, channel)
+    session.clear_queue()
 
-        await session.play_stream(url)
+    source = await get_audio_source(url, ctx)
 
-    except ValueError as error:
-        await ctx.send(str(error))
-
-
-async def stop(ctx):
-    find_or_create_session(ctx).stop_stream()
+    if source:
+        session.add_stream(source)
+        await session.play_next()
 
 
-async def pause_or_resume(ctx):
-    session = find_or_create_session(ctx)
+async def stop(ctx, loop):
+    session = find_or_create_session(ctx, loop)
+    session.clear_queue()
+    session.stop_stream()
+
+
+async def pause_or_resume(ctx, loop):
+    session = find_or_create_session(ctx, loop)
 
     if session.is_playing():
         session.pause_stream()
@@ -51,25 +57,90 @@ async def pause_or_resume(ctx):
         session.resume_stream()
 
 
-async def resume(ctx):
-    session = find_or_create_session(ctx)
+async def resume(ctx, loop):
+    session = find_or_create_session(ctx, loop)
 
     if not session.is_paused():
         await ctx.send("You numpty! There's either already something playing or nothing to resume.")
         return
 
-    find_or_create_session(ctx).resume_stream()
+    find_or_create_session(ctx, loop).resume_stream()
 
 
-async def leave_channel_if_required(ctx, before, after):
-    await find_or_create_session(ctx).leave_channel_if_required(before, after)
+async def queue(url, ctx, loop):
+    if not url:
+        await ctx.send("You didn't specify anything to add...")
+        return
+
+    session = find_or_create_session(ctx, loop)
+
+    if session.is_playing():
+        source = await get_audio_source(url, ctx)
+        if source:
+            session.add_stream(source)
+    else:
+        await play(url, ctx, loop)
+
+
+async def clear(ctx, loop):
+    find_or_create_session(ctx, loop).clear_queue()
+
+
+async def repeat(ctx, loop):
+    if find_or_create_session(ctx, loop).toggle_repeat():
+        await ctx.send("Repeat mode enabled. The current or next played song will repeat.")
+    else:
+        await ctx.send("Repeat mode disabled.")
+
+
+async def skip(ctx, loop):
+    find_or_create_session(ctx, loop).stop_stream()
+
+
+async def status(ctx, loop):
+    session = find_or_create_session(ctx, loop)
+
+    if session.is_playing():
+        await ctx.send("The bot is playing.")
+    else:
+        await ctx.send("The bot is not playing.")
+
+    await ctx.send("There are {} song(s) in the queue.".format(len(session.url_queue)))
+
+    if session.url_queue.repeat:
+        await ctx.send("Repeat mode is enabled.")
+    else:
+        await ctx.send("Repeat mode is disabled.")
+
+
+async def leave_channel_if_required(ctx, loop, before, after):
+    await find_or_create_session(ctx, loop).leave_channel_if_required(before, after)
+
+
+async def get_audio_source(url, ctx):
+    audio = None
+
+    try:
+        audio = YouTube(url).streams.get_audio_only()
+    except RegexMatchError:
+        await ctx.send(" ❓ That's not a valid YouTube URL. ❓ ")
+    except VideoPrivate:
+        await ctx.send(" ⛔ That video is private. ⛔ ")
+    except MembersOnly:
+        await ctx.send(" 🚫 That video is members only. 🚫 ")
+    except VideoUnavailable:
+        await ctx.send(" ❓ That video does not exist. ❓ ")
+
+    return audio
 
 
 class Session:
 
-    def __init__(self, guild):
+    def __init__(self, guild, loop):
         self.guild = guild
+        self.loop = loop
         self.voice_client = None
+        self.url_queue = StreamQueue()
 
     async def join_channel(self, ctx, channel):
 
@@ -88,27 +159,37 @@ class Session:
 
         print("Connected to channel {0} on {1}".format(channel, ctx.guild))
 
-    async def play_stream(self, url):
+    async def play_stream(self, stream):
 
         if self.voice_client is None:
             raise ValueError("Voice client is None, something went a bit wrong.")
 
-        self.stop_stream()
+        if self.voice_client.is_playing():
+            self.stop_stream()
 
-        try:
-            source = self.get_audio_source(url)
-        except RegexMatchError:
-            raise ValueError(" ❓ That's not a valid YouTube URL. ❓ ")
-        except VideoPrivate:
-            raise ValueError(" ⛔ That video is private. ⛔ ")
-        except MembersOnly:
-            raise ValueError(" 🚫 That video is members only. 🚫 ")
-        except VideoUnavailable:
-            raise ValueError(" ❓ That video does not exist. ❓ ")
+        def after(error):
 
-        self.voice_client.play(source)
+            if error:
+                return
 
-        print("Playing {0}".format(url))
+            coro = self.play_next()
+            fut = asyncio.run_coroutine_threadsafe(coro, self.loop)
+
+            try:
+                fut.result()
+            except:
+                pass
+
+        self.voice_client.play(stream, after=after)
+
+    async def play_next(self):
+        next_stream = self.url_queue.next()
+
+        if next_stream:
+            await self.play_stream(FFmpegPCMAudio(next_stream.url, **FFMPEG_OPTIONS))
+            return True
+
+        return False
 
     async def leave_channel_if_required(self, before, after):
         if self.voice_client is None:
@@ -127,6 +208,8 @@ class Session:
 
         await self.voice_client.disconnect()
         self.voice_client = None
+
+        self.url_queue.clear()
 
         print("Left channel {0} on {1}".format(before.channel, before.channel.guild))
 
@@ -154,6 +237,12 @@ class Session:
         else:
             return False
 
-    def get_audio_source(self, url):
-        audio = YouTube(url).streams.get_audio_only()
-        return FFmpegPCMAudio(audio.url, **FFMPEG_OPTIONS)
+    def add_stream(self, stream):
+        self.url_queue.add(stream)
+
+    def toggle_repeat(self):
+        self.url_queue.repeat = not self.url_queue.repeat
+        return self.url_queue.repeat
+
+    def clear_queue(self):
+        self.url_queue.clear()
