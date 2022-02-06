@@ -19,13 +19,13 @@ async def on_voice_state_update(member, before, after):
     if member.id == bot.user.id:
         return
 
-    await youtube.leave_channel_if_required(member, before, after)
+    await youtube.leave_channel_if_required(member, bot.loop, before, after)
 
 
 @bot.command()
 async def play(ctx, arg=None):
     if arg is not None:
-        await youtube.play(arg, ctx)
+        await youtube.play(arg, ctx, bot.loop)
     else:
         await resume(ctx)
 
@@ -37,12 +37,12 @@ async def p(ctx, arg=None):
 
 @bot.command()
 async def pause(ctx):
-    await youtube.pause_or_resume(ctx)
+    await youtube.pause_or_resume(ctx, bot.loop)
 
 
 @bot.command()
 async def resume(ctx):
-    await youtube.resume(ctx)
+    await youtube.resume(ctx, bot.loop)
 
 
 @bot.command()
@@ -52,11 +52,39 @@ async def r(ctx):
 
 @bot.command()
 async def stop(ctx):
-    await youtube.stop(ctx)
+    await youtube.stop(ctx, bot.loop)
 
 
 @bot.command()
 async def s(ctx):
     await stop(ctx)
+
+
+@bot.command()
+async def queue(ctx, arg=None):
+    await youtube.queue(arg, ctx, bot.loop)
+
+
+@bot.command()
+async def clear(ctx):
+    await youtube.stop(ctx, bot.loop)
+    await youtube.clear(ctx, bot.loop)
+
+
+@bot.command()
+async def skip(ctx):
+    await youtube.skip(ctx, bot.loop)
+
+
+@bot.command()
+async def status(ctx):
+    await youtube.status(ctx, bot.loop)
+
+
+@bot.command()
+async def repeat(ctx, arg=None):
+    if arg is not None:
+        await youtube.play(arg, ctx, bot.loop)
+    await youtube.repeat(ctx, bot.loop)
 
 bot.run(TOKEN)
