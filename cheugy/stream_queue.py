@@ -7,7 +7,12 @@ class StreamQueue:
 
     def next(self):
 
-        if (not self.repeat or not self.current) and len(self.streams) > 0:
+        if self.repeat:
+            return self.current
+
+        self.current = None
+
+        if len(self.streams) > 0:
             self.current = self.streams.pop(0)
 
         return self.current
