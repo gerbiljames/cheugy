@@ -7,7 +7,7 @@ class StreamQueue:
 
     def next(self):
 
-        if self.repeat:
+        if self.repeat and self.current is not None:
             return self.current
 
         self.current = None
