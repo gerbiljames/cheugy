@@ -12,6 +12,7 @@ COPY . ./
 
 # Install production dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools pipenv
+RUN pipenv install --system --deploy --ignore-pipfile
 
 CMD exec python main.py
