@@ -18,6 +18,7 @@ pycparser = "*"
 pynacl = "*"
 python-dotenv = "*"
 pytube = {editable = true, ref = "5fc27b72180f6bb76d43633c29a89eff5df1f70e", git = "https://github.com/glubsy/pytube"}
+"discord.py" = "*"
 
 [dev-packages]
 
