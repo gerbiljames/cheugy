@@ -11,8 +11,8 @@ WORKDIR $APP_HOME
 COPY . ./
 
 # Install production dependencies.
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git
-RUN pip install --upgrade pip setuptools pipenv
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends ffmpeg git
+RUN pip install --upgrade pip setuptools wheel pipenv
 RUN pipenv install --system --deploy --ignore-pipfile
 
 CMD exec python main.py
