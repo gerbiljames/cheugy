@@ -8,6 +8,8 @@ from .stream_queue import StreamQueue
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 sessions = {}
 
+ok_emoji = "👌"
+
 
 def find_channel(ctx):
     voice = ctx.author.voice
@@ -27,11 +29,17 @@ def find_or_create_session(ctx, loop):
 
 
 async def play(url, ctx, loop):
+
+    await ctx.response.defer(ephemeral=False)
+
     channel = find_channel(ctx)
 
     session = find_or_create_session(ctx, loop)
 
-    await session.join_channel(ctx, channel)
+    try:
+        await session.join_channel(ctx, channel)
+    except ValueError:
+        await ctx.respond("Nice try, but you're not in a voice channel.")
 
     session.clear_queue()
 
@@ -41,11 +49,14 @@ async def play(url, ctx, loop):
         session.add_stream(source)
         await session.play_next()
 
+    await ctx.respond("▶ Playing %s" % url)
+
 
 async def stop(ctx, loop):
     session = find_or_create_session(ctx, loop)
     session.clear_queue()
     session.stop_stream()
+    await ctx.respond("⏹ Stopping all playback")
 
 
 async def pause_or_resume(ctx, loop):
@@ -56,20 +67,23 @@ async def pause_or_resume(ctx, loop):
     else:
         session.resume_stream()
 
+    await ctx.respond(ok_emoji)
+
 
 async def resume(ctx, loop):
     session = find_or_create_session(ctx, loop)
 
     if not session.is_paused():
-        await ctx.send("You numpty! There's either already something playing or nothing to resume.")
+        await ctx.respond("🤦 You numpty! There's either already something playing or nothing to resume.")
         return
 
     find_or_create_session(ctx, loop).resume_stream()
+    await ctx.respond(ok_emoji)
 
 
 async def queue(url, ctx, loop):
     if not url:
-        await ctx.send("You didn't specify anything to add...")
+        await ctx.respond("🤦 You didn't specify anything to add...")
         return
 
     session = find_or_create_session(ctx, loop)
@@ -78,39 +92,46 @@ async def queue(url, ctx, loop):
         source = await get_audio_source(url, ctx)
         if source:
             session.add_stream(source)
+            await ctx.respond(ok_emoji)
     else:
         await play(url, ctx, loop)
 
 
 async def clear(ctx, loop):
     find_or_create_session(ctx, loop).clear_queue()
+    await ctx.respond(ok_emoji)
 
 
 async def repeat(ctx, loop):
     if find_or_create_session(ctx, loop).toggle_repeat():
-        await ctx.send("Repeat mode enabled. The current or next played song will repeat.")
+        await ctx.respond("🔁 Repeat mode enabled. The current or next played song will repeat.")
     else:
-        await ctx.send("Repeat mode disabled.")
+        await ctx.respond("⛔ Repeat mode disabled.")
 
 
 async def skip(ctx, loop):
     find_or_create_session(ctx, loop).stop_stream()
+    await ctx.respond(ok_emoji)
 
 
 async def status(ctx, loop):
     session = find_or_create_session(ctx, loop)
 
-    if session.is_playing():
-        await ctx.send("The bot is playing.")
-    else:
-        await ctx.send("The bot is not playing.")
+    response = ""
 
-    await ctx.send("There are {} song(s) in the queue.".format(len(session.url_queue)))
+    if session.is_playing():
+        response += "▶ The bot is playing"
+    else:
+        response += "⏹ The bot is not playing"
+
+    response += "\n🚶 There are {} song(s) in the queue 🚶🚶🚶🚶".format(len(session.url_queue))
 
     if session.url_queue.repeat:
-        await ctx.send("Repeat mode is enabled.")
+        response += "\n🔁 Repeat mode is enabled"
     else:
-        await ctx.send("Repeat mode is disabled.")
+        response += "\n⛔ Repeat mode is disabled"
+
+    await ctx.respond(response)
 
 
 async def leave_channel_if_required(ctx, loop, before, after):
@@ -123,13 +144,13 @@ async def get_audio_source(url, ctx):
     try:
         audio = YouTube(url).streams.get_audio_only()
     except RegexMatchError:
-        await ctx.send(" ❓ That's not a valid YouTube URL. ❓ ")
+        await ctx.respond("❓ That's not a valid YouTube URL")
     except VideoPrivate:
-        await ctx.send(" ⛔ That video is private. ⛔ ")
+        await ctx.respond("⛔ That video is private")
     except MembersOnly:
-        await ctx.send(" 🚫 That video is members only. 🚫 ")
+        await ctx.respond("🚫 That video is members only")
     except VideoUnavailable:
-        await ctx.send(" ❓ That video does not exist. ❓ ")
+        await ctx.respond("❓ That video does not exist")
 
     return audio
 
@@ -145,7 +166,7 @@ class Session:
     async def join_channel(self, ctx, channel):
 
         if channel is None:
-            raise ValueError("Nice try, but you're not in a voice channel.")
+            raise ValueError()
 
         if self.voice_client is not None and channel.id == self.voice_client.channel.id:
             print("Already connected to channel {0} on {1}".format(channel, ctx.guild))
