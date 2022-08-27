@@ -7,8 +7,9 @@ from cheugy import youtube
 
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
+DEBUG_GUILDS = os.getenv('DEBUG_GUILDS')
 
-bot = discord.Bot(debug_guilds=["888840123041587260"])
+bot = discord.Bot(debug_guilds=DEBUG_GUILDS.split(',') if DEBUG_GUILDS else None)
 
 
 @bot.event
