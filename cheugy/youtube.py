@@ -48,8 +48,7 @@ async def play(url, ctx, loop):
     if source:
         session.add_stream(source)
         await session.play_next()
-
-    await ctx.respond("▶ Playing %s" % url)
+        await ctx.respond("▶ Playing %s" % url)
 
 
 async def stop(ctx, loop):
