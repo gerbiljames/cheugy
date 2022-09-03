@@ -19,9 +19,13 @@ def find_channel(ctx):
 
 
 def find_or_create_session(ctx, loop):
+
+    print("Finding session...")
+
     session = sessions.get(ctx.guild.id)
 
     if session is None:
+        print("Creating session...")
         session = Session(guild=ctx.guild, loop=loop)
         sessions[ctx.guild.id] = session
 
@@ -29,6 +33,8 @@ def find_or_create_session(ctx, loop):
 
 
 async def play(url, ctx, loop):
+
+    print("Got play command for %s" % url)
 
     await ctx.response.defer(ephemeral=False)
 
@@ -52,6 +58,9 @@ async def play(url, ctx, loop):
 
 
 async def stop(ctx, loop):
+
+    print("Got stop command")
+
     session = find_or_create_session(ctx, loop)
     session.clear_queue()
     session.stop_stream()
@@ -140,6 +149,8 @@ async def leave_channel_if_required(ctx, loop, before, after):
 async def get_audio_source(url, ctx):
     audio = None
 
+    print("Fetching audio source for %s" % url)
+
     try:
         audio = YouTube(url).streams.get_audio_only()
     except RegexMatchError:
@@ -181,6 +192,8 @@ class Session:
 
     async def play_stream(self, stream):
 
+        print("Playing stream")
+
         if self.voice_client is None:
             raise ValueError("Voice client is None, something went a bit wrong.")
 
@@ -203,6 +216,9 @@ class Session:
         self.voice_client.play(stream, after=after)
 
     async def play_next(self):
+
+        print("Playing next audio")
+
         next_stream = self.url_queue.next()
 
         if next_stream:
