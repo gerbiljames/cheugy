@@ -46,6 +46,7 @@ async def play(url, ctx, loop):
         await session.join_channel(ctx, channel)
     except ValueError:
         await ctx.respond("Nice try, but you're not in a voice channel.")
+        return
 
     session.clear_queue()
 
@@ -85,7 +86,7 @@ async def resume(ctx, loop):
         await ctx.respond("🤦 You numpty! There's either already something playing or nothing to resume.")
         return
 
-    find_or_create_session(ctx, loop).resume_stream()
+    session.resume_stream()
     await ctx.respond(ok_emoji)
 
 
@@ -192,7 +193,7 @@ class Session:
 
     async def play_stream(self, stream):
 
-        print("Playing stream")
+        print("Playing stream...")
 
         if self.voice_client is None:
             raise ValueError("Voice client is None, something went a bit wrong.")
@@ -217,11 +218,10 @@ class Session:
 
     async def play_next(self):
 
-        print("Playing next audio")
-
         next_stream = self.url_queue.next()
 
         if next_stream:
+            print("Playing next audio...")
             await self.play_stream(FFmpegPCMAudio(next_stream.url, **FFMPEG_OPTIONS))
             return True
 
