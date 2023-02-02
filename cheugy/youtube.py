@@ -162,6 +162,9 @@ async def get_audio_source(url, ctx):
         await ctx.respond("🚫 That video is members only")
     except VideoUnavailable:
         await ctx.respond("❓ That video does not exist")
+    except KeyError:
+        print("Got KeyError when fetching audio source, retrying...")
+        return await get_audio_source(url, ctx)
 
     return audio
 
